@@ -1,3 +1,5 @@
+const USER_ID = 'dan_1k';
+
 Object.map = function (o, f, ctx) {
     ctx = ctx || this;
     var result = [];
@@ -23,18 +25,48 @@ function spotifyApi(uri, params, success, fail) {
     })
 }
 
-
 $(document).ready(function () {
+    spotifyApi('me/playlists', {},
+        function (response) {
+            $('#search-results').empty().append(
+                response.items.map(function(playlist) {
+                    return '<li class="collection-item avatar playlist" data-id="' + playlist.id + '">' +
+                        playlist.images ? '<img width="42px" height="42px" src="' + playlist.images[0].url + '" class="circle">' : '' +
+                    '<span class="title">' + playlist.name + '</span><p></p>' +
+                    '<a href="#!" class="secondary-content"><i class="material-icons">send</i></a></li>'
+                })
+            );
+        });
+
+    $('body').on('click', '.playlist', function () {
+        var $this = $(this);
+        spotifyApi('me/playlists', {user_id: USER_ID, playlist_id: $this.data('id')},
+            function (response) {
+                response.tracks.items.map(function (track) {
+                    return '<li class="collection-item avatar track" data-id="' + track.id + '">' +
+                        '<img src="' + track.album.images.slice(-1)[0].url + '" class="circle">' +
+                        '<span class="title">' + track.name + '</span><p>' + track.artists[0].name + '</p>' +
+                        '<a href="#!" class="secondary-content"><i class="material-icons">send</i></a></li>'
+                })
+            },
+            function () {});
+
+    });
+
     $("#song-search").keypress(function (e) {
         if (e.keyCode == 13) {
             spotifyApi('search', {q: $(this).val(), type: 'track'},
                 function (response) {
-                    $('#search-results').append(
-                        response.tracks.items.filter(function (item) {
-                            return item.type = 'track';
-                        }).map(function (item) {
-                            return '<li data-id="' + item.id + '">' + item.name + ':' + item.artists[0].name + '</li>'
-                        }));
+                    $('#search-results').empty().append(
+                        response.tracks.items.filter(function (track) {
+                            return track.type = 'track';
+                        }).map(function (track) {
+                            return '<li class="collection-item avatar track" data-id="' + track.id + '">' +
+                                '<img src="' + track.album.images.slice(-1)[0].url + '" class="circle">' +
+                                '<span class="title">' + track.name + '</span><p>' + track.artists[0].name + '</p>' +
+                                '<a href="#!" class="secondary-content"><i class="material-icons">send</i></a></li>'
+                        })
+                    );
                 },
                 function () {
                 })
