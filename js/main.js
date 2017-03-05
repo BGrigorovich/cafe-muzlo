@@ -1,3 +1,5 @@
+var API_URL = '192.168.33.119';
+
 Object.map = function (o, f, ctx) {
     ctx = ctx || this;
     var result = [];
@@ -17,17 +19,20 @@ function spotifyApi(uri, params, success, fail) {
         type: 'GET',
         beforeSend: function (xhr) {
             xhr.setRequestHeader('Content-Type', 'application/json');
-            xhr.setRequestHeader('Authorization', 'Bearer BQD83VFcb9_gTYuftHou6a7XWdC_pN8Zz-f9h7DmxoE9ySeCWi2fnmdtOsFeF1GpCrk3E9502NlJ0NGZPkvCVCcf-rN-iQfNJQWpDLZFcGcFqk8BEei4cGZklGTh4RyeNJEf_F3pQOQ53lmxPMqsNLICsfvD-DCF-YPutdeGTDlVsWtYAAOT4NkgYA1pIiuVPmABNCv3OGtx4l5JZ180Pb6BU5Lt50vcUX12himenUc3envN3FETjnek0UYihjnx4pQFhepKJ5meiYnsZ_Li_oLS0c5y8zJ3F2pPwnRN9voRq9A1Ig');
+            xhr.setRequestHeader('Authorization', 'Bearer BQDn7mVSUSUG3Zd23MuCtWYLS_UKS18NnW0AXf3tYNO9nLz9O2RoQoCC12fe8aFdmr7CYXhbwk7WfhqzLdPGkv_Mk7aTPm7Ll2GXX9JekZ79YLK7bpQW7D3IGiUGRScKl2OjjINITA49TT1BtcfJf4B3zoTCLn-PwIvliga6V_EEuA2x7d4YBYZ1YBI9o9sQHmLpYn8aZ1w00vnK6AL1AerbWQu_KQn6Dz5rFPUwpRNH7G_1BdDN89jKFY9Dgim9O03Iq0nzoZSJhZ3rX9cQIRzIs6hrjx9I7u9hDyqT1pwSCYb_3w');
         },
         success: success,
         fail: fail
     })
 }
 
+var ws = new WebSocket('ws://' + API_URL + ':8080', 'ws1');
+
 $(document).ready(function () {
     function displayPlaylists() {
         spotifyApi('me/playlists', {},
             function (response) {
+                $("#song-search").val('');
                 $('#back-to-playlists-btn').hide();
                 $('#search-results').empty().append(
                     response.items.map(function (playlist) {
@@ -39,7 +44,26 @@ $(document).ready(function () {
                 );
             });
     }
-    displayPlaylists();
+
+    if (localStorage.getItem('user_id')) {
+        $('#main-view').show();
+        displayPlaylists();
+    } else {
+        $('#login-view').show();
+    }
+
+    $('#login-btn').click(function () {
+        $.post('url', {userId: $('#user-id').val()})
+            .done(function (response) {
+                $('#login-view').hide();
+                $('#main-view').show();
+                displayPlaylists();
+            })
+            .fail(function () {
+                alert('Something went wrong');
+            });
+    });
+
     $('#back-to-playlists-btn').click(displayPlaylists);
 
     $('body').on('click', '.playlist', function () {
@@ -58,7 +82,6 @@ $(document).ready(function () {
             function () {
             });
     });
-
     $("#song-search").keypress(function (e) {
         if (e.keyCode == 13) {
             spotifyApi('search', {q: $(this).val(), type: 'track'},
@@ -79,4 +102,15 @@ $(document).ready(function () {
                 })
         }
     });
+
+    $('body').on('click', '.playlist', function () {
+        var msg = {
+            id: $(this).data('id')
+        };
+        ws.send(JSON.stringify(msg));
+    });
+
+    ws.onmessage = function (event) {
+        console.log(event.data);
+    }
 });
