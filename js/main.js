@@ -30,7 +30,7 @@ function spotifyApi(uri, params, success, fail) {
     })
 }
 
-var ws = new WebSocket('ws://' + API_URL + ':8080', 'ws1');
+var ws = new WebSocket('ws://' + API_URL + ':8080', 'ws1'); // TODO second parameter
 
 $(document).ready(function () {
     function displayPlaylists() {
@@ -38,7 +38,7 @@ $(document).ready(function () {
         $('#back-to-playlists-btn').hide();
         $('#search-results').empty().append(
             JSON.parse(localStorage.getItem('playlists')).items.map(function (playlist) {
-                return '<li class="collection-item avatar playlist" data-id="' + playlist.id + '">' +
+                return '<li class="collection-item avatar playlist" data-id="' + playlist.id + '" data-owner="' + playlist.owner.id + '">' +
                     '<img width="42px" height="42px" src="' + playlist.images[0].url + '" class="circle">' +
                     '<span class="title">' + playlist.name + '</span><p></p>' +
                     '<a href="#!" class="secondary-content"><i class="material-icons">trending_flat</i></a></li>'
@@ -65,11 +65,12 @@ $(document).ready(function () {
             $.post('http://' + API_URL + ':8000/register/',
                 {
                     playlists: JSON.parse(localStorage.getItem('playlists')),
-                    user_id: localStorage.getItem('user_id')
+                    userId: localStorage.getItem('user_id'),
+                    displayName: localStorage.getItem('user_name')
                 })
                 .done(displayPlaylists)
                 .fail(displayPlaylists);
-        }, 1500);
+        }, 2500);
     }
 
     $('#login-btn').click(function () {
@@ -89,7 +90,7 @@ $(document).ready(function () {
 
     $('body').on('click', '.playlist', function () {
         var $this = $(this);
-        spotifyApi('users/spotify/playlists/' + $this.data('id'), {},
+        spotifyApi('users/' + $this.data('owner') + '/playlists/' + $this.data('id'), {},
             function (response) {
                 $('#back-to-playlists-btn').show();
                 $('#search-results').empty().append(response.tracks.items.map(function (item) {
