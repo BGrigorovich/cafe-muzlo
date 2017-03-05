@@ -34,37 +34,44 @@ function initWebSockets(user_id) {
 }
 
 $(document).ready(function () {
-    var ws = new WebSocket('ws://' + API_URL + ':8080/user_session');
+    var ws = new WebSocket('ws://' + API_URL + ':8080/user_session/');
     ws.onopen = function (event) {
-        // setTimeout(function () {
-        //     ws.send(JSON.stringify({'action': 'new_user_session', 'user_id': 4}));
-        // }, 500)
+        ws.send(JSON.stringify({'action': 'new_user_session', 'user_id': localStorage.getItem('user_id')}));
         return false;
     };
 
     $('body').on('click', '.track', function () {
         var msg = {
+            action: 'request_new_song',
             id: $(this).data('id')
         };
         ws.send(JSON.stringify(msg));
     });
 
     ws.onmessage = function (event) {
-        console.log(event.data);
         var msg = event.data;
         if (msg.type == 'now_playing') {
-
+            $('#playlist').find('.track[data-id="' + msg.track.id + '"]').addClass('current').prevAll().addClass('previous');
         } else if (msg.type == 'pending_songs') {
             $('#playlist').append(msg.tracks.map(function (track) {
-
-            }))
+                return '<li class="collection-item avatar track" data-id="' + track.id + '">' +
+                    '<img src="' + track.album.images.slice(-1)[0].url + '" class="circle">' +
+                    '<span class="title">' + track.name + '</span>' +
+                    '<p>' + track.artists[0].name + '</p></li>';
+            }));
+        } else if (msg.type == 'song_added') {
+            $('#playlist').append('<li class="collection-item avatar track" data-id="' + msg.track.id + '">' +
+                    '<img src="' + msg.track.album.images.slice(-1)[0].url + '" class="circle">' +
+                    '<span class="title">' + msg.track.name + '</span>' +
+                    '<p>' + msg.track.artists[0].name + '</p></li>'
+            );
         } else if (msg.type == 'your_song_on_air') {
 
         } else if (msg.type == 'your_next_song') {
 
         }
         return false
-    }
+    };
 
     function displayPlaylists() {
         $("#song-search").val('');
