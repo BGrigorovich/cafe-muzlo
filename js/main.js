@@ -1,4 +1,6 @@
 var API_URL = '192.168.33.119';
+var $GET=[];
+window.location.href.replace(/[?&#]+([^=&]+)=([^&]*)/gi,function(a,name,value){$GET[name]=value;});
 
 Object.map = function (o, f, ctx) {
     ctx = ctx || this;
@@ -45,16 +47,31 @@ $(document).ready(function () {
             });
     }
 
-    if (localStorage.getItem('user_id')) {
-        $('#main-view').show();
-        displayPlaylists();
+    if (!$GET.hasOwnProperty('access_token')) {
+        window.location.href = 'https://accounts.spotify.com/authorize?client_id=2a66a944d6184315b8d02096ed7030dc&' +
+            'response_type=token&redirect_uri=http://192.168.32.166:8887/index.html';
     } else {
-        $('#login-view').show();
+        $.ajax({
+            url: 'https://api.spotify.com/v1/me',
+            headers: {
+                'Authorization': 'Bearer ' + $GET['access_token']
+            },
+            success: function (response) {
+                localStorage.setItem('user_id', response.user_id)
+            }
+        });
     }
+    // if (localStorage.getItem('user_id')) {
+        // $('#main-view').show();
+        // displayPlaylists();
+    // } else {
+    //     $('#login-view').show();
+    // }
 
     $('#login-btn').click(function () {
-        $.post('url', {userId: $('#user-id').val()})
+        $.get('https://accounts.spotify.com/authorize', {userId: $('#user-id').val()})
             .done(function (response) {
+                localStorage.setItem('user_id', response.user_id);
                 $('#login-view').hide();
                 $('#main-view').show();
                 displayPlaylists();
