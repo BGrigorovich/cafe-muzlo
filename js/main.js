@@ -1,6 +1,9 @@
 var API_URL = '192.168.33.119';
-var $GET=[];
-window.location.href.replace(/[?&#]+([^=&]+)=([^&]*)/gi,function(a,name,value){$GET[name]=value;});
+
+var $GET = [];
+window.location.href.replace(/[?&#]+([^=&]+)=([^&]*)/gi, function (a, name, value) {
+    $GET[name] = value;
+});
 
 Object.map = function (o, f, ctx) {
     ctx = ctx || this;
@@ -19,9 +22,8 @@ function spotifyApi(uri, params, success, fail) {
     $.ajax({
         url: 'https://api.spotify.com/v1/' + uri + params,
         type: 'GET',
-        beforeSend: function (xhr) {
-            xhr.setRequestHeader('Content-Type', 'application/json');
-            xhr.setRequestHeader('Authorization', 'Bearer BQDn7mVSUSUG3Zd23MuCtWYLS_UKS18NnW0AXf3tYNO9nLz9O2RoQoCC12fe8aFdmr7CYXhbwk7WfhqzLdPGkv_Mk7aTPm7Ll2GXX9JekZ79YLK7bpQW7D3IGiUGRScKl2OjjINITA49TT1BtcfJf4B3zoTCLn-PwIvliga6V_EEuA2x7d4YBYZ1YBI9o9sQHmLpYn8aZ1w00vnK6AL1AerbWQu_KQn6Dz5rFPUwpRNH7G_1BdDN89jKFY9Dgim9O03Iq0nzoZSJhZ3rX9cQIRzIs6hrjx9I7u9hDyqT1pwSCYb_3w');
+        headers: {
+            'Authorization': 'Bearer ' + localStorage.getItem('access_token')
         },
         success: success,
         fail: fail
@@ -32,41 +34,43 @@ var ws = new WebSocket('ws://' + API_URL + ':8080', 'ws1');
 
 $(document).ready(function () {
     function displayPlaylists() {
-        spotifyApi('me/playlists', {},
-            function (response) {
-                $("#song-search").val('');
-                $('#back-to-playlists-btn').hide();
-                $('#search-results').empty().append(
-                    response.items.map(function (playlist) {
-                        return '<li class="collection-item avatar playlist" data-id="' + playlist.id + '">' +
-                            '<img width="42px" height="42px" src="' + playlist.images[0].url + '" class="circle">' +
-                            '<span class="title">' + playlist.name + '</span><p></p>' +
-                            '<a href="#!" class="secondary-content"><i class="material-icons">trending_flat</i></a></li>'
-                    })
-                );
-            });
+        $("#song-search").val('');
+        $('#back-to-playlists-btn').hide();
+        $('#search-results').empty().append(
+            JSON.parse(localStorage.getItem('playlists')).items.map(function (playlist) {
+                return '<li class="collection-item avatar playlist" data-id="' + playlist.id + '">' +
+                    '<img width="42px" height="42px" src="' + playlist.images[0].url + '" class="circle">' +
+                    '<span class="title">' + playlist.name + '</span><p></p>' +
+                    '<a href="#!" class="secondary-content"><i class="material-icons">trending_flat</i></a></li>'
+            }));
     }
 
     if (!$GET.hasOwnProperty('access_token')) {
         window.location.href = 'https://accounts.spotify.com/authorize?client_id=2a66a944d6184315b8d02096ed7030dc&' +
-            'response_type=token&redirect_uri=http://192.168.32.166:8887/index.html';
+            'response_type=token&redirect_uri=http://192.168.32.166:8887/index.html&scope=playlist-read-collaborative';
     } else {
-        $.ajax({
-            url: 'https://api.spotify.com/v1/me',
-            headers: {
-                'Authorization': 'Bearer ' + $GET['access_token']
-            },
-            success: function (response) {
-                localStorage.setItem('user_id', response.user_id)
+        localStorage.setItem('access_token', $GET['access_token'])
+        spotifyApi('me', {}, function (response) {
+                localStorage.setItem('user_id', response.id);
+                localStorage.setItem('user_name', response.display_name);
+            }, function () {
             }
-        });
+        );
+        spotifyApi('me/playlists', {}, function (response) {
+                localStorage.setItem('playlists', JSON.stringify(response));
+            }, function () {
+            }
+        );
+        setTimeout(function () {
+            $.post('http://' + API_URL + ':8000/register/',
+                {
+                    playlists: JSON.parse(localStorage.getItem('playlists')),
+                    user_id: localStorage.getItem('user_id')
+                })
+                .done(displayPlaylists)
+                .fail(displayPlaylists);
+        }, 1500);
     }
-    // if (localStorage.getItem('user_id')) {
-        // $('#main-view').show();
-        // displayPlaylists();
-    // } else {
-    //     $('#login-view').show();
-    // }
 
     $('#login-btn').click(function () {
         $.get('https://accounts.spotify.com/authorize', {userId: $('#user-id').val()})
