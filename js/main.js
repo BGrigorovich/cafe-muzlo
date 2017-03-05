@@ -30,9 +30,42 @@ function spotifyApi(uri, params, success, fail) {
     })
 }
 
-var ws = new WebSocket('ws://' + API_URL + ':8080', 'ws1'); // TODO second parameter
+function initWebSockets(user_id) {
+}
 
 $(document).ready(function () {
+    var ws = new WebSocket('ws://' + API_URL + ':8080/user_session');
+    ws.onopen = function (event) {
+        // setTimeout(function () {
+        //     ws.send(JSON.stringify({'action': 'new_user_session', 'user_id': 4}));
+        // }, 500)
+        return false;
+    };
+
+    $('body').on('click', '.track', function () {
+        var msg = {
+            id: $(this).data('id')
+        };
+        ws.send(JSON.stringify(msg));
+    });
+
+    ws.onmessage = function (event) {
+        console.log(event.data);
+        var msg = event.data;
+        if (msg.type == 'now_playing') {
+
+        } else if (msg.type == 'pending_songs') {
+            $('#playlist').append(msg.tracks.map(function (track) {
+
+            }))
+        } else if (msg.type == 'your_song_on_air') {
+
+        } else if (msg.type == 'your_next_song') {
+
+        }
+        return false
+    }
+
     function displayPlaylists() {
         $("#song-search").val('');
         $('#back-to-playlists-btn').hide();
@@ -51,7 +84,7 @@ $(document).ready(function () {
     } else {
         localStorage.setItem('access_token', $GET['access_token'])
         spotifyApi('me', {}, function (response) {
-                localStorage.setItem('user_id', response.id);
+                localStorage.setItem('spotify_user_id', response.id);
                 localStorage.setItem('user_name', response.display_name);
             }, function () {
             }
@@ -64,19 +97,25 @@ $(document).ready(function () {
         setTimeout(function () {
             $.post('http://' + API_URL + ':8000/register/',
                 {
-                    playlists: JSON.parse(localStorage.getItem('playlists')),
-                    userId: localStorage.getItem('user_id'),
-                    displayName: localStorage.getItem('user_name')
+                    playlist_ids: JSON.stringify(JSON.parse(localStorage.getItem('playlists')).items.map(function (playlist) {
+                        return playlist.id;
+                    })),
+                    spotify_user_id: localStorage.getItem('spotify_user_id'),
+                    display_name: localStorage.getItem('user_name')
                 })
-                .done(displayPlaylists)
+                .done(function (response) {
+                    localStorage.setItem('user_id', response.user_id);
+                    initWebSockets(response.user_id);
+                    displayPlaylists();
+                })
                 .fail(displayPlaylists);
-        }, 2500);
+        }, 1500);
     }
 
     $('#login-btn').click(function () {
         $.get('https://accounts.spotify.com/authorize', {userId: $('#user-id').val()})
             .done(function (response) {
-                localStorage.setItem('user_id', response.user_id);
+                localStorage.setItem('spotify_user_id', response.user_id);
                 $('#login-view').hide();
                 $('#main-view').show();
                 displayPlaylists();
@@ -124,15 +163,4 @@ $(document).ready(function () {
                 })
         }
     });
-
-    $('body').on('click', '.playlist', function () {
-        var msg = {
-            id: $(this).data('id')
-        };
-        ws.send(JSON.stringify(msg));
-    });
-
-    ws.onmessage = function (event) {
-        console.log(event.data);
-    }
 });
